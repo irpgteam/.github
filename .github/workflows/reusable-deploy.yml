@@ -38,6 +38,7 @@ jobs:
 
       - name: Update deploy checkout
         run: |
+          git config --global --add safe.directory "${{ inputs.deploy-dir }}"
           cd "${{ inputs.deploy-dir }}"
           git fetch origin "${{ inputs.production-branch }}"
           git reset --hard "origin/${{ inputs.production-branch }}"
