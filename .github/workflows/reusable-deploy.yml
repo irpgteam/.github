@@ -3,6 +3,9 @@ name: Reusable Deploy
 on:
   workflow_call:
     inputs:
+      repo:
+        required: true
+        type: string
       deploy-dir:
         required: true
         type: string
@@ -30,6 +33,9 @@ on:
       ready-log-pattern:
         type: string
         default: ''
+    secrets:
+      DEPLOY_TOKEN:
+        required: true
 
 jobs:
   deploy:
@@ -40,13 +46,16 @@ jobs:
         run: docker tag ${{ inputs.image-name }}:latest ${{ inputs.image-name }}:rollback || true
 
       - name: Update deploy checkout
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          REPO: ${{ inputs.repo }}
         run: |
           git config --global --add safe.directory "${{ inputs.deploy-dir }}"
           cd "${{ inputs.deploy-dir }}"
-          git fetch origin "${{ inputs.production-branch }}"
-          git reset --hard "origin/${{ inputs.production-branch }}"
+          git fetch "https://x-access-token:${DEPLOY_TOKEN}@github.com/${REPO}.git" "${{ inputs.production-branch }}"
+          git reset --hard FETCH_HEAD
           git clean -fd
-          git submodule update --init --recursive
+          git -c url."https://x-access-token:${DEPLOY_TOKEN}@github.com/".insteadOf="https://github.com/" submodule update --init --recursive
 
       - name: Build and deploy
         run: |
