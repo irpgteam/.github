@@ -1,0 +1,80 @@
+name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      deploy-dir:
+        required: true
+        type: string
+      compose-dir:
+        required: true
+        type: string
+      compose-service:
+        required: true
+        type: string
+      container-name:
+        required: true
+        type: string
+      image-name:
+        required: true
+        type: string
+      production-branch:
+        required: true
+        type: string
+      health-url:
+        type: string
+        default: ''
+      ready-log-pattern:
+        type: string
+        default: ''
+
+jobs:
+  deploy:
+    if: github.ref == format('refs/heads/{0}', inputs.production-branch)
+    runs-on: [self-hosted, "${{ inputs.compose-service }}"]
+    steps:
+      - name: Snapshot current image for rollback
+        run: docker tag ${{ inputs.image-name }}:latest ${{ inputs.image-name }}:rollback || true
+
+      - name: Update deploy checkout
+        run: |
+          cd "${{ inputs.deploy-dir }}"
+          git fetch origin "${{ inputs.production-branch }}"
+          git reset --hard "origin/${{ inputs.production-branch }}"
+          git clean -fd
+
+      - name: Build and deploy
+        run: |
+          cd "${{ inputs.compose-dir }}"
+          docker compose build ${{ inputs.compose-service }}
+          docker compose up -d ${{ inputs.compose-service }}
+
+      - name: Health check
+        id: health
+        run: |
+          ok=false
+          for i in $(seq 1 15); do
+            sleep 4
+            if [ -n "${{ inputs.health-url }}" ]; then
+              if curl -sf "${{ inputs.health-url }}" > /dev/null; then ok=true; break; fi
+            elif [ -n "${{ inputs.ready-log-pattern }}" ]; then
+              if docker logs --since 2m "${{ inputs.container-name }}" 2>&1 | grep -qF "${{ inputs.ready-log-pattern }}"; then ok=true; break; fi
+            else
+              status=$(docker inspect -f '{{.State.Status}}' "${{ inputs.container-name }}")
+              [ "$status" = "running" ] && ok=true && break
+            fi
+          done
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+
+      - name: Rollback on failed health check
+        if: steps.health.outputs.ok != 'true'
+        run: |
+          echo "::error::Health check failed for ${{ inputs.compose-service }}, rolling back"
+          docker tag ${{ inputs.image-name }}:rollback ${{ inputs.image-name }}:latest || true
+          cd "${{ inputs.compose-dir }}"
+          docker compose up -d --no-build ${{ inputs.compose-service }}
+          exit 1
+
+      - name: Clean up dangling images
+        if: always()
+        run: docker image prune -f
