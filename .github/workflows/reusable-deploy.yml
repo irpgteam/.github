@@ -12,6 +12,9 @@ on:
       compose-service:
         required: true
         type: string
+      runner-label:
+        required: true
+        type: string
       container-name:
         required: true
         type: string
@@ -31,7 +34,7 @@ on:
 jobs:
   deploy:
     if: github.ref == format('refs/heads/{0}', inputs.production-branch)
-    runs-on: [self-hosted, "${{ inputs.compose-service }}"]
+    runs-on: [self-hosted, "${{ inputs.runner-label }}"]
     steps:
       - name: Snapshot current image for rollback
         run: docker tag ${{ inputs.image-name }}:latest ${{ inputs.image-name }}:rollback || true
