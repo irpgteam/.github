@@ -23,6 +23,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Generate Prisma Client
+        run: test -d prisma && npx prisma generate || true
+
       - name: Lint
         run: npm run lint --if-present
 
