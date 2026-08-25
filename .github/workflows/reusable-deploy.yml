@@ -67,8 +67,8 @@ jobs:
         id: health
         run: |
           ok=false
-          for i in $(seq 1 15); do
-            sleep 4
+          for i in $(seq 1 40); do
+            sleep 5
             if [ -n "${{ inputs.health-url }}" ]; then
               if curl -sf "${{ inputs.health-url }}" > /dev/null; then ok=true; break; fi
             elif [ -n "${{ inputs.ready-log-pattern }}" ]; then
