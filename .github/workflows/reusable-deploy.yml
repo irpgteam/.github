@@ -52,10 +52,10 @@ jobs:
         run: |
           git config --global --add safe.directory "${{ inputs.deploy-dir }}"
           cd "${{ inputs.deploy-dir }}"
-          git fetch "https://x-access-token:${SUBMODULE_TOKEN}@github.com/${REPO}.git" "${{ inputs.production-branch }}"
+          git config --global url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+          git -c fetch.recurseSubmodules=no fetch "https://x-access-token:${SUBMODULE_TOKEN}@github.com/${REPO}.git" "${{ inputs.production-branch }}"
           git reset --hard FETCH_HEAD
           git clean -fd
-          git config --global url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
           git submodule sync --recursive
           git submodule update --init --recursive
           git config --global --unset-all url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf || true
