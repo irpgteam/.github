@@ -55,8 +55,10 @@ jobs:
           git fetch "https://x-access-token:${SUBMODULE_TOKEN}@github.com/${REPO}.git" "${{ inputs.production-branch }}"
           git reset --hard FETCH_HEAD
           git clean -fd
-          git config --local url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+          git submodule sync --recursive
           git submodule update --init --recursive
+          git config --global --unset-all url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf || true
 
       - name: Build and deploy
         run: |
